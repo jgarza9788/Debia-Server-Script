@@ -85,6 +85,17 @@ install_docker() {
   fi
 }
 
+install_cockpit() {
+  if dpkg -s cockpit >/dev/null 2>&1; then
+    log "Cockpit already installed, skipping"
+  else
+    log "Installing Cockpit web console"
+    DEBIAN_FRONTEND=noninteractive apt-get install -y cockpit
+  fi
+
+  systemctl enable --now cockpit.socket
+}
+
 configure_bashrc() {
   if [[ ! -f "${BASHRC_TEMPLATE}" ]]; then
     echo "Missing template: ${BASHRC_TEMPLATE}"
@@ -108,13 +119,16 @@ final_notes() {
 - Configure WiFi with: nmtui
 - Verify services:
     systemctl status docker
+    systemctl status cockpit.socket
     systemctl status NetworkManager
+- Open Cockpit: https://<server-ip>:9090
 NOTES
 }
 
 main() {
   install_base_packages
   install_docker
+  install_cockpit
   configure_bashrc
   final_notes
 }

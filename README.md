@@ -9,6 +9,7 @@ Post-install Debian server bootstrap script.
 - Installs essential admin tools (`curl`, `git`, `htop`, `tmux`, `ufw`, `fail2ban`, etc.)
 - Installs requested editors/utilities (`nano`, `micro`, `bat`)
 - Installs and enables Docker (`docker.io` + compose plugin)
+- Installs and enables Cockpit web console (`cockpit`)
 - Installs WiFi/networking tools (`network-manager`, `wpasupplicant`, `wireless-tools`)
 - Ensures `sudo` is installed
 - Backs up the current user's `.bashrc`
@@ -28,11 +29,18 @@ chmod +x post-debian-server-setup.sh
 sudo ./post-debian-server-setup.sh
 ```
 
+Or run it without changing file permissions:
+
+```bash
+sudo bash ./post-debian-server-setup.sh
+```
+
 After running:
 
 - Reboot is recommended.
 - Log out/in to apply Docker group membership changes.
 - Use `nmtui` to configure WiFi networks.
+- Access Cockpit at `https://<server-ip>:9090`.
 
 ## Notes
 
