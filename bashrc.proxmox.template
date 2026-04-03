@@ -1,0 +1,57 @@
+# ~/.bashrc - Proxmox-style baseline for Debian servers
+
+# If not running interactively, don't do anything.
+case $- in
+  *i*) ;;
+    *) return;;
+esac
+
+HISTCONTROL=ignoredups:erasedups
+HISTSIZE=5000
+HISTFILESIZE=20000
+shopt -s histappend
+shopt -s checkwinsize
+
+# Better prompt with chroot / host visibility
+if [ -n "${debian_chroot:-}" ]; then
+  PS1='(${debian_chroot})\u@\h:\w\\$ '
+else
+  PS1='\u@\h:\w\\$ '
+fi
+
+# Common aliases
+alias ll='ls -alF --color=auto'
+alias la='ls -A --color=auto'
+alias l='ls -CF --color=auto'
+alias cls='clear'
+alias update='sudo apt update && sudo apt full-upgrade -y'
+alias install='sudo apt install -y'
+alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+alias dcu='docker compose up -d'
+alias dcd='docker compose down'
+alias ports='ss -tulpen'
+alias grep='grep --color=auto'
+alias df='df -h'
+alias free='free -h'
+
+# Use bat if available
+if command -v bat >/dev/null 2>&1; then
+  alias cat='bat --style=plain'
+fi
+
+# Prefer micro over nano when available
+if command -v micro >/dev/null 2>&1; then
+  export EDITOR='micro'
+  export VISUAL='micro'
+else
+  export EDITOR='nano'
+  export VISUAL='nano'
+fi
+
+# Helpful PATH additions
+export PATH="$HOME/.local/bin:$PATH"
+
+# Load completion if installed
+if [ -f /etc/bash_completion ]; then
+  . /etc/bash_completion
+fi
