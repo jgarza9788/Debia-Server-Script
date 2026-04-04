@@ -35,12 +35,35 @@ Or run it without changing file permissions:
 sudo bash ./post-debian-server-setup.sh
 ```
 
+Show available options:
+
+```bash
+sudo ./post-debian-server-setup.sh --help
+```
+
+Common examples:
+
+```bash
+# Non-interactive full run
+sudo ./post-debian-server-setup.sh --yes
+
+# Preview what would happen without making changes
+sudo ./post-debian-server-setup.sh --dry-run
+
+# Minimal setup (base packages only)
+sudo ./post-debian-server-setup.sh --minimal --yes
+
+# Skip docker and cockpit, append shell config block
+sudo ./post-debian-server-setup.sh --no-docker --no-cockpit --bashrc-mode append
+```
+
 After running:
 
 - Reboot is recommended.
 - Log out/in to apply Docker group membership changes.
 - Use `nmtui` to configure WiFi networks.
 - Access Cockpit at `https://<server-ip>:9090`.
+- Review the final run summary to see what was applied or skipped.
 
 ## Notes
 
