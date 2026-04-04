@@ -68,6 +68,27 @@ record_status() {
   SUMMARY+=("$1")
 }
 
+install_optional_packages() {
+  local available=()
+  local pkg
+  for pkg in "$@"; do
+    if apt-cache show "${pkg}" >/dev/null 2>&1; then
+      available+=("${pkg}")
+    else
+      log "Optional package unavailable in current repositories, skipping: ${pkg}"
+    fi
+  done
+
+  if [[ ${#available[@]} -eq 0 ]]; then
+    record_status "Optional packages: none available"
+    return 0
+  fi
+
+  log "Installing optional extra tools"
+  run_cmd env DEBIAN_FRONTEND=noninteractive apt-get install -y "${available[@]}"
+  record_status "Optional packages: installed (${available[*]})"
+}
+
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -187,6 +208,9 @@ install_base_packages() {
     bat \
     htop \
     btop \
+    fzf \
+    duf \
+    trash-cli \
     tree \
     tmux \
     rsync \
@@ -208,6 +232,16 @@ install_base_packages() {
     network-manager \
     wireless-tools \
     wpasupplicant
+
+  install_optional_packages \
+    fastfetch \
+    eza \
+    zoxide \
+    git-delta \
+    tldr \
+    httpie \
+    qrencode \
+    ffmpeg
 
   # Debian packages the bat binary as batcat.
   if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
