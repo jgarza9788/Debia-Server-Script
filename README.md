@@ -35,6 +35,12 @@ Or run it without changing file permissions:
 sudo bash ./post-debian-server-setup.sh
 ```
 
+Run it directly without cloning the repo:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/<owner>/Debia-Server-Script/main/post-debian-server-setup.sh | sudo bash
+```
+
 Show available options:
 
 ```bash
