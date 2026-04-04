@@ -8,6 +8,7 @@ Post-install Debian server bootstrap script.
 
 - Installs essential admin tools (`curl`, `git`, `htop`, `tmux`, `ufw`, `fail2ban`, etc.)
 - Installs requested editors/utilities (`nano`, `micro`, `bat`)
+- Installs terminal tools like `fastfetch`, `btop`, `fzf`, `duf`, `trash-cli`, and `ripgrep`
 - Installs and enables Docker (`docker.io` + compose plugin)
 - Installs and enables Cockpit web console (`cockpit`)
 - Installs WiFi/networking tools (`network-manager`, `wpasupplicant`, `wireless-tools`)
@@ -97,3 +98,4 @@ SSH hardening is conservative:
 
 - The script creates a timestamped backup like `~/.bashrc.backup.YYYYMMDD-HHMMSS`.
 - On Debian, `bat` may be packaged as `batcat`; the script creates `/usr/local/bin/bat` if needed.
+- Optional extras are installed only when available in configured APT repositories (similar to `--skip-unavailable` behavior).
