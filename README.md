@@ -4,7 +4,7 @@ Post-install Debian server bootstrap script.
 
 ## What this does
 
-`post-debian-server-setup.sh` prepares a fresh Debian install with common server tooling and shell defaults:
+`bootstrap.sh` prepares a fresh Debian install with common server tooling and shell defaults:
 
 - Installs essential admin tools (`curl`, `git`, `htop`, `tmux`, `ufw`, `fail2ban`, etc.)
 - Installs requested editors/utilities (`nano`, `micro`, `bat`)
@@ -17,7 +17,7 @@ Post-install Debian server bootstrap script.
 
 ## Files
 
-- `post-debian-server-setup.sh` - main setup script
+- `bootstrap.sh` - main setup script
 - `bashrc.proxmox.template` - Proxmox-style `.bashrc` template used by the script
 
 ## Usage
@@ -25,48 +25,48 @@ Post-install Debian server bootstrap script.
 From the repo directory:
 
 ```bash
-chmod +x post-debian-server-setup.sh
-sudo ./post-debian-server-setup.sh
+chmod +x bootstrap.sh
+sudo ./bootstrap.sh
 ```
 
 Or run it without changing file permissions:
 
 ```bash
-sudo bash ./post-debian-server-setup.sh
+sudo bash ./bootstrap.sh
 ```
 
 Run it directly without cloning the repo:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<owner>/Debia-Server-Script/main/post-debian-server-setup.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/<owner>/Debia-Server-Script/main/bootstrap.sh | sudo bash
 ```
 
 Show available options:
 
 ```bash
-sudo ./post-debian-server-setup.sh --help
+sudo ./bootstrap.sh --help
 ```
 
 Common examples:
 
 ```bash
 # Non-interactive full run
-sudo ./post-debian-server-setup.sh --yes
+sudo ./bootstrap.sh --yes
 
 # Preview what would happen without making changes
-sudo ./post-debian-server-setup.sh --dry-run
+sudo ./bootstrap.sh --dry-run
 
 # Minimal setup (base packages only)
-sudo ./post-debian-server-setup.sh --minimal --yes
+sudo ./bootstrap.sh --minimal --yes
 
 # Skip docker and cockpit, append shell config block
-sudo ./post-debian-server-setup.sh --no-docker --no-cockpit --bashrc-mode append
+sudo ./bootstrap.sh --no-docker --no-cockpit --bashrc-mode append
 
 # Apply security hardening profile (firewall + fail2ban + SSH hardening)
-sudo ./post-debian-server-setup.sh --hardening --yes
+sudo ./bootstrap.sh --hardening --yes
 
 # Firewall + fail2ban only (skip SSH hardening)
-sudo ./post-debian-server-setup.sh --hardening --no-harden-ssh --yes
+sudo ./bootstrap.sh --hardening --no-harden-ssh --yes
 ```
 
 After running:
