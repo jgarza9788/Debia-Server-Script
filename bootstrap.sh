@@ -26,7 +26,7 @@ log() {
 usage() {
   cat <<USAGE
 Usage:
-  sudo ./post-debian-server-setup.sh [options]
+  sudo ./bootstrap.sh [options]
 
 Options:
   --yes, --non-interactive  Run without confirmation prompts
@@ -407,7 +407,7 @@ configure_bashrc() {
   cat >>"${BASHRC_PATH}" <<'EOF'
 
 # >>> debia-server-script managed block >>>
-# Added by post-debian-server-setup.sh in append mode.
+# Added by bootstrap.sh in append mode.
 EOF
   cat "${BASHRC_TEMPLATE}" >>"${BASHRC_PATH}"
   cat >>"${BASHRC_PATH}" <<'EOF'
