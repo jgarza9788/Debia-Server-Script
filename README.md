@@ -70,6 +70,34 @@ sudo ./bootstrap.sh --hardening --yes
 sudo ./bootstrap.sh --hardening --no-harden-ssh --yes
 ```
 
+## Interactive mode (user-focused flow)
+
+When run without `--yes`, the script now guides users with:
+
+- A startup banner (script name + purpose + ASCII header)
+- A profile selector: **All**, **Some**, or **None**
+- A pre-execution plan preview
+- A final confirmation prompt before making changes
+
+Short example:
+
+```text
+Selection profile:
+  1) All  - install/configure everything
+  2) Some - choose each component
+  3) None - do not apply changes
+Choose [1-3]: 2
+...
+Execution plan:
+  - Base packages: enabled
+  - Docker: enabled
+  - Cockpit: skipped
+  ...
+Proceed with this plan? [Y/n]:
+```
+
+For automation/CI, use `--yes` (non-interactive), which skips onboarding prompts.
+
 After running:
 
 - Reboot is recommended.

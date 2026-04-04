@@ -23,6 +23,26 @@ log() {
   printf '\n==> %s\n' "$1"
 }
 
+show_intro_banner() {
+  if [[ "${INTERACTIVE}" != "true" ]]; then
+    return 0
+  fi
+
+  cat <<'EOF'
+==========================================
+   ____       _     _       
+  |  _ \  ___| |__ (_) __ _ 
+  | | | |/ _ \ '_ \| |/ _` |
+  | |_| |  __/ |_) | | (_| |
+  |____/ \___|_.__/|_|\__,_|
+
+        Server Bootstrap
+==========================================
+This script prepares a Debian server with
+optional tooling, services, and hardening.
+EOF
+}
+
 usage() {
   cat <<USAGE
 Usage:
@@ -42,6 +62,7 @@ Options:
   --no-harden-ssh           Skip SSH hardening even when --hardening is set
   --harden-ssh              Enable SSH hardening step
   --bashrc-mode MODE        Bashrc mode: replace | append | skip
+  (Interactive mode includes an intro banner, all/some/none selection, and plan confirmation.)
   --help                    Show this help text
 USAGE
 }
@@ -66,6 +87,112 @@ confirm_step() {
 
 record_status() {
   SUMMARY+=("$1")
+}
+
+prompt_yes_no() {
+  local prompt="$1"
+  local default="${2:-N}"
+  local reply=""
+  local suffix="[y/N]"
+  local is_yes_default=false
+
+  if [[ "${default}" == "Y" ]]; then
+    suffix="[Y/n]"
+    is_yes_default=true
+  fi
+
+  while true; do
+    read -r -p "${prompt} ${suffix}: " reply
+    if [[ -z "${reply}" ]]; then
+      [[ "${is_yes_default}" == "true" ]]
+      return $?
+    fi
+    case "${reply}" in
+      y|Y|yes|YES)
+        return 0
+        ;;
+      n|N|no|NO)
+        return 1
+        ;;
+      *)
+        echo "Please answer y or n."
+        ;;
+    esac
+  done
+}
+
+interactive_selection_menu() {
+  if [[ "${INTERACTIVE}" != "true" ]]; then
+    return 0
+  fi
+
+  local choice=""
+  echo
+  echo "Selection profile:"
+  echo "  1) All  - install/configure everything"
+  echo "  2) Some - choose each component"
+  echo "  3) None - do not apply changes"
+
+  while true; do
+    read -r -p "Choose [1-3]: " choice
+    case "${choice}" in
+      1)
+        INSTALL_BASE=true
+        INSTALL_DOCKER=true
+        INSTALL_COCKPIT=true
+        CONFIGURE_BASHRC=true
+        if prompt_yes_no "Include security hardening (UFW + fail2ban + SSH)?" "N"; then
+          CONFIGURE_FIREWALL=true
+          CONFIGURE_FAIL2BAN=true
+          HARDEN_SSH=true
+        else
+          CONFIGURE_FIREWALL=false
+          CONFIGURE_FAIL2BAN=false
+          HARDEN_SSH=false
+        fi
+        return 0
+        ;;
+      2)
+        if prompt_yes_no "Install base packages?" "Y"; then INSTALL_BASE=true; else INSTALL_BASE=false; fi
+        if prompt_yes_no "Install/configure Docker?" "Y"; then INSTALL_DOCKER=true; else INSTALL_DOCKER=false; fi
+        if prompt_yes_no "Install/configure Cockpit?" "Y"; then INSTALL_COCKPIT=true; else INSTALL_COCKPIT=false; fi
+        if prompt_yes_no "Configure bashrc?" "Y"; then CONFIGURE_BASHRC=true; else CONFIGURE_BASHRC=false; fi
+        if prompt_yes_no "Configure UFW firewall?" "N"; then CONFIGURE_FIREWALL=true; else CONFIGURE_FIREWALL=false; fi
+        if prompt_yes_no "Enable fail2ban?" "N"; then CONFIGURE_FAIL2BAN=true; else CONFIGURE_FAIL2BAN=false; fi
+        if prompt_yes_no "Apply SSH hardening?" "N"; then HARDEN_SSH=true; else HARDEN_SSH=false; fi
+        return 0
+        ;;
+      3)
+        INSTALL_BASE=false
+        INSTALL_DOCKER=false
+        INSTALL_COCKPIT=false
+        CONFIGURE_BASHRC=false
+        CONFIGURE_FIREWALL=false
+        CONFIGURE_FAIL2BAN=false
+        HARDEN_SSH=false
+        return 0
+        ;;
+      *)
+        echo "Invalid selection. Please choose 1, 2, or 3."
+        ;;
+    esac
+  done
+}
+
+print_execution_plan() {
+  echo
+  echo "Execution plan:"
+  printf '  - Base packages: %s\n' "$( [[ "${INSTALL_BASE}" == "true" ]] && echo enabled || echo skipped )"
+  printf '  - Docker: %s\n' "$( [[ "${INSTALL_DOCKER}" == "true" ]] && echo enabled || echo skipped )"
+  printf '  - Cockpit: %s\n' "$( [[ "${INSTALL_COCKPIT}" == "true" ]] && echo enabled || echo skipped )"
+  if [[ "${CONFIGURE_BASHRC}" == "true" ]]; then
+    printf '  - bashrc: enabled (%s mode)\n' "${BASHRC_MODE}"
+  else
+    printf '  - bashrc: skipped\n'
+  fi
+  printf '  - UFW firewall: %s\n' "$( [[ "${CONFIGURE_FIREWALL}" == "true" ]] && echo enabled || echo skipped )"
+  printf '  - fail2ban: %s\n' "$( [[ "${CONFIGURE_FAIL2BAN}" == "true" ]] && echo enabled || echo skipped )"
+  printf '  - SSH hardening: %s\n' "$( [[ "${HARDEN_SSH}" == "true" ]] && echo enabled || echo skipped )"
 }
 
 install_optional_packages() {
@@ -474,8 +601,18 @@ NOTES
 
 main() {
   parse_args "$@"
+  show_intro_banner
   trap 'on_error "${LINENO}" "${BASH_COMMAND}"' ERR
   preflight_checks
+  interactive_selection_menu
+  print_execution_plan
+
+  if [[ "${INTERACTIVE}" == "true" ]]; then
+    if ! prompt_yes_no "Proceed with this plan?" "Y"; then
+      echo "No changes applied."
+      exit 0
+    fi
+  fi
 
   if [[ "${INSTALL_BASE}" == "true" ]]; then
     if confirm_step "Install base packages?"; then
