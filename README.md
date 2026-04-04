@@ -55,6 +55,12 @@ sudo ./post-debian-server-setup.sh --minimal --yes
 
 # Skip docker and cockpit, append shell config block
 sudo ./post-debian-server-setup.sh --no-docker --no-cockpit --bashrc-mode append
+
+# Apply security hardening profile (firewall + fail2ban + SSH hardening)
+sudo ./post-debian-server-setup.sh --hardening --yes
+
+# Firewall + fail2ban only (skip SSH hardening)
+sudo ./post-debian-server-setup.sh --hardening --no-harden-ssh --yes
 ```
 
 After running:
@@ -64,6 +70,22 @@ After running:
 - Use `nmtui` to configure WiFi networks.
 - Access Cockpit at `https://<server-ip>:9090`.
 - Review the final run summary to see what was applied or skipped.
+
+## Security hardening options
+
+The script can optionally apply a hardening profile:
+
+- `--hardening` / `--harden`: enables UFW + fail2ban + SSH hardening
+- `--no-firewall`: skips UFW even if hardening is enabled
+- `--no-fail2ban`: skips fail2ban even if hardening is enabled
+- `--no-harden-ssh`: skips SSH hardening even if hardening is enabled
+- `--harden-ssh`: enables only SSH hardening (can be used without `--hardening`)
+
+SSH hardening is conservative:
+
+- `PermitRootLogin` is set to `no`
+- `PubkeyAuthentication` is set to `yes`
+- `PasswordAuthentication` is set to `no` **only** if `${TARGET_HOME}/.ssh/authorized_keys` exists for the target user
 
 ## Notes
 
