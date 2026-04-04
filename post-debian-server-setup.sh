@@ -13,6 +13,9 @@ INSTALL_BASE=true
 INSTALL_DOCKER=true
 INSTALL_COCKPIT=true
 CONFIGURE_BASHRC=true
+CONFIGURE_FIREWALL=false
+CONFIGURE_FAIL2BAN=false
+HARDEN_SSH=false
 BASHRC_MODE="replace" # replace | append | skip
 SUMMARY=()
 
@@ -33,6 +36,11 @@ Options:
   --no-docker               Skip Docker install/setup
   --no-cockpit              Skip Cockpit install/setup
   --no-bashrc               Skip bashrc configuration
+  --hardening, --harden     Enable security hardening steps (UFW, fail2ban, SSH)
+  --no-firewall             Skip firewall hardening even when --hardening is set
+  --no-fail2ban             Skip fail2ban setup even when --hardening is set
+  --no-harden-ssh           Skip SSH hardening even when --hardening is set
+  --harden-ssh              Enable SSH hardening step
   --bashrc-mode MODE        Bashrc mode: replace | append | skip
   --help                    Show this help text
 USAGE
@@ -86,6 +94,23 @@ parse_args() {
         ;;
       --no-bashrc)
         CONFIGURE_BASHRC=false
+        ;;
+      --hardening|--harden)
+        CONFIGURE_FIREWALL=true
+        CONFIGURE_FAIL2BAN=true
+        HARDEN_SSH=true
+        ;;
+      --no-firewall)
+        CONFIGURE_FIREWALL=false
+        ;;
+      --no-fail2ban)
+        CONFIGURE_FAIL2BAN=false
+        ;;
+      --no-harden-ssh)
+        HARDEN_SSH=false
+        ;;
+      --harden-ssh)
+        HARDEN_SSH=true
         ;;
       --bashrc-mode)
         BASHRC_MODE="${2:-}"
@@ -236,6 +261,114 @@ install_cockpit() {
   run_cmd systemctl enable --now cockpit.socket
 }
 
+configure_firewall() {
+  if ! confirm_step "Configure UFW firewall with default-deny incoming policy?"; then
+    record_status "UFW: skipped by user"
+    return 0
+  fi
+
+  log "Configuring UFW defaults"
+  run_cmd ufw default deny incoming
+  run_cmd ufw default allow outgoing
+  run_cmd ufw allow OpenSSH
+  if [[ "${INSTALL_COCKPIT}" == "true" ]]; then
+    run_cmd ufw allow 9090/tcp
+  fi
+  run_cmd ufw --force enable
+  record_status "UFW: configured and enabled"
+}
+
+configure_fail2ban() {
+  if ! confirm_step "Enable fail2ban with SSH protection?"; then
+    record_status "fail2ban: skipped by user"
+    return 0
+  fi
+
+  local jail_local="/etc/fail2ban/jail.local"
+  if [[ ! -f "${jail_local}" ]]; then
+    if [[ "${DRY_RUN}" == "true" ]]; then
+      log "Would create ${jail_local} with SSH jail defaults"
+    else
+      cat >"${jail_local}" <<'EOF'
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled = true
+EOF
+    fi
+    record_status "fail2ban: jail.local created"
+  else
+    record_status "fail2ban: existing jail.local preserved"
+  fi
+
+  run_cmd systemctl enable --now fail2ban
+  record_status "fail2ban: service enabled"
+}
+
+set_sshd_option() {
+  local key="$1"
+  local value="$2"
+  local file="$3"
+
+  if grep -Eq "^[#[:space:]]*${key}[[:space:]]+" "${file}"; then
+    run_cmd sed -i -E "s|^[#[:space:]]*(${key})[[:space:]]+.*$|\\1 ${value}|" "${file}"
+  else
+    if [[ "${DRY_RUN}" == "true" ]]; then
+      log "Would append '${key} ${value}' to ${file}"
+    else
+      echo "${key} ${value}" >>"${file}"
+    fi
+  fi
+}
+
+harden_ssh() {
+  if ! confirm_step "Apply SSH hardening (disable root/password login where safe)?"; then
+    record_status "SSH hardening: skipped by user"
+    return 0
+  fi
+
+  local sshd_config="/etc/ssh/sshd_config"
+  local backup_path="${sshd_config}.backup.$(date +%Y%m%d-%H%M%S)"
+  local auth_keys="${TARGET_HOME}/.ssh/authorized_keys"
+
+  if [[ ! -f "${sshd_config}" ]]; then
+    record_status "SSH hardening: skipped (missing ${sshd_config})"
+    return 0
+  fi
+
+  run_cmd cp -a "${sshd_config}" "${backup_path}"
+  record_status "SSH hardening: backed up sshd_config"
+
+  set_sshd_option "PermitRootLogin" "no" "${sshd_config}"
+  set_sshd_option "PubkeyAuthentication" "yes" "${sshd_config}"
+
+  if [[ -s "${auth_keys}" ]]; then
+    set_sshd_option "PasswordAuthentication" "no" "${sshd_config}"
+    record_status "SSH hardening: disabled password auth (authorized_keys present)"
+  else
+    record_status "SSH hardening: kept password auth (no authorized_keys for ${TARGET_USER})"
+  fi
+
+  if [[ "${DRY_RUN}" == "true" ]]; then
+    log "Would validate sshd config and restart ssh service"
+    record_status "SSH hardening: validation/restart planned (dry-run)"
+    return 0
+  fi
+
+  if sshd -t; then
+    run_cmd systemctl restart ssh
+    record_status "SSH hardening: applied and ssh restarted"
+  else
+    record_status "SSH hardening: validation failed, restoring backup"
+    run_cmd cp -a "${backup_path}" "${sshd_config}"
+    run_cmd systemctl restart ssh
+    return 1
+  fi
+}
+
 configure_bashrc() {
   if [[ ! -f "${BASHRC_TEMPLATE}" ]]; then
     echo "Missing template: ${BASHRC_TEMPLATE}"
@@ -294,6 +427,7 @@ final_notes() {
 - Verify services:
     systemctl status docker
     systemctl status cockpit.socket
+    systemctl status fail2ban
     systemctl status NetworkManager
 - Open Cockpit: https://<server-ip>:9090
 NOTES
@@ -335,6 +469,24 @@ main() {
     configure_bashrc
   else
     record_status "bashrc: skipped by flag"
+  fi
+
+  if [[ "${CONFIGURE_FIREWALL}" == "true" ]]; then
+    configure_firewall
+  else
+    record_status "UFW: skipped by flag"
+  fi
+
+  if [[ "${CONFIGURE_FAIL2BAN}" == "true" ]]; then
+    configure_fail2ban
+  else
+    record_status "fail2ban: skipped by flag"
+  fi
+
+  if [[ "${HARDEN_SSH}" == "true" ]]; then
+    harden_ssh
+  else
+    record_status "SSH hardening: skipped by flag"
   fi
 
   final_notes
