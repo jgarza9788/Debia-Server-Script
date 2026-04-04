@@ -49,7 +49,7 @@ Usage:
   sudo ./bootstrap.sh [options]
 
 Options:
-  --yes, --non-interactive  Run without confirmation prompts
+  --yes, --non-interactive  Run without confirmation prompts (skips interactive intro banner)
   --dry-run                 Print actions without executing changes
   --minimal                 Install base packages only (skip docker/cockpit/bashrc)
   --no-base                 Skip base package installation
@@ -65,6 +65,20 @@ Options:
   (Interactive mode includes an intro banner, all/some/none selection, and plan confirmation.)
   --help                    Show this help text
 USAGE
+}
+
+show_intro_banner() {
+  if [[ "${INTERACTIVE}" != "true" ]]; then
+    return 0
+  fi
+
+  cat <<'EOF'
+========================================
+       Debia Server Bootstrap
+========================================
+EOF
+  echo "Prepare a Debian server with optional tooling, services, and hardening."
+  echo
 }
 
 run_cmd() {
