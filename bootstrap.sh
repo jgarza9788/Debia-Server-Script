@@ -201,7 +201,6 @@ install_base_packages() {
     ca-certificates \
     gnupg \
     lsb-release \
-    software-properties-common \
     apt-transport-https \
     nano \
     micro \
@@ -234,6 +233,7 @@ install_base_packages() {
     wpasupplicant
 
   install_optional_packages \
+    software-properties-common \
     fastfetch \
     eza \
     zoxide \
