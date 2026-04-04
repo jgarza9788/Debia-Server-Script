@@ -68,6 +68,55 @@ record_status() {
   SUMMARY+=("$1")
 }
 
+print_execution_plan() {
+  local base_status="disabled"
+  local docker_status="disabled"
+  local cockpit_status="disabled"
+  local bashrc_status="disabled"
+  local ufw_status="disabled"
+  local fail2ban_status="disabled"
+  local ssh_status="disabled"
+
+  if [[ "${INSTALL_BASE}" == "true" ]]; then
+    base_status="enabled"
+  fi
+  if [[ "${INSTALL_DOCKER}" == "true" ]]; then
+    docker_status="enabled"
+  fi
+  if [[ "${INSTALL_COCKPIT}" == "true" ]]; then
+    cockpit_status="enabled"
+  fi
+  if [[ "${CONFIGURE_BASHRC}" == "true" && "${BASHRC_MODE}" != "skip" ]]; then
+    bashrc_status="enabled (${BASHRC_MODE})"
+  elif [[ "${CONFIGURE_BASHRC}" == "true" && "${BASHRC_MODE}" == "skip" ]]; then
+    bashrc_status="disabled (mode=skip)"
+  fi
+  if [[ "${CONFIGURE_FIREWALL}" == "true" ]]; then
+    ufw_status="enabled"
+  fi
+  if [[ "${CONFIGURE_FAIL2BAN}" == "true" ]]; then
+    fail2ban_status="enabled"
+  fi
+  if [[ "${HARDEN_SSH}" == "true" ]]; then
+    ssh_status="enabled"
+  fi
+
+  log "Execution plan"
+  cat <<PLAN
+  - [${base_status}] Base packages
+  - [${docker_status}] Docker
+  - [${cockpit_status}] Cockpit
+  - [${bashrc_status}] Bashrc mode
+  - [${ufw_status}] UFW
+  - [${fail2ban_status}] fail2ban
+  - [${ssh_status}] SSH hardening
+PLAN
+
+  if [[ "${DRY_RUN}" == "true" ]]; then
+    echo "Dry-run active: execution is simulated; no changes will be applied."
+  fi
+}
+
 install_optional_packages() {
   local available=()
   local pkg
@@ -476,6 +525,14 @@ main() {
   parse_args "$@"
   trap 'on_error "${LINENO}" "${BASH_COMMAND}"' ERR
   preflight_checks
+  print_execution_plan
+
+  if [[ "${INTERACTIVE}" == "true" ]]; then
+    if ! confirm_step "Proceed with this plan?"; then
+      echo "No changes applied."
+      exit 0
+    fi
+  fi
 
   if [[ "${INSTALL_BASE}" == "true" ]]; then
     if confirm_step "Install base packages?"; then
