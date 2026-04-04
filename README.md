@@ -127,3 +127,10 @@ SSH hardening is conservative:
 - The script creates a timestamped backup like `~/.bashrc.backup.YYYYMMDD-HHMMSS`.
 - On Debian, `bat` may be packaged as `batcat`; the script creates `/usr/local/bin/bat` if needed.
 - Optional extras are installed only when available in configured APT repositories (similar to `--skip-unavailable` behavior).
+
+## TL;DR
+
+- Run `sudo ./bootstrap.sh --yes` for a full unattended setup.
+- Use `--minimal` for base packages only, or disable features with flags like `--no-docker` / `--no-cockpit`.
+- Use `--dry-run` first if you want to preview changes safely.
+- Add `--hardening` to enable firewall, fail2ban, and conservative SSH hardening.
