@@ -68,6 +68,106 @@ record_status() {
   SUMMARY+=("$1")
 }
 
+prompt_feature_toggle() {
+  local label="$1"
+  local current="$2"
+  local choice
+
+  while true; do
+    echo
+    echo "${label}:"
+    if [[ "${current}" == "true" ]]; then
+      echo "  1) Enable (current)"
+      echo "  2) Disable"
+    else
+      echo "  1) Enable"
+      echo "  2) Disable (current)"
+    fi
+    read -r -p "Select an option [1-2]: " choice
+    case "${choice}" in
+      1) echo "true"; return 0 ;;
+      2) echo "false"; return 0 ;;
+      *) echo "Invalid selection. Please choose 1 or 2." ;;
+    esac
+  done
+}
+
+interactive_selection_menu() {
+  local mode
+  local hardening_choice
+
+  if [[ "${INTERACTIVE}" != "true" ]]; then
+    return 0
+  fi
+
+  while true; do
+    echo
+    echo "Select execution mode:"
+    echo "  1) All"
+    echo "  2) Some"
+    echo "  3) None"
+    read -r -p "Select an option [1-3]: " mode
+
+    case "${mode}" in
+      1)
+        INSTALL_BASE=true
+        INSTALL_DOCKER=true
+        INSTALL_COCKPIT=true
+        CONFIGURE_BASHRC=true
+
+        while true; do
+          echo
+          echo "Enable hardening steps?"
+          echo "  1) Yes (firewall, fail2ban, SSH hardening)"
+          echo "  2) No"
+          read -r -p "Select an option [1-2]: " hardening_choice
+          case "${hardening_choice}" in
+            1)
+              CONFIGURE_FIREWALL=true
+              CONFIGURE_FAIL2BAN=true
+              HARDEN_SSH=true
+              break
+              ;;
+            2)
+              CONFIGURE_FIREWALL=false
+              CONFIGURE_FAIL2BAN=false
+              HARDEN_SSH=false
+              break
+              ;;
+            *)
+              echo "Invalid selection. Please choose 1 or 2."
+              ;;
+          esac
+        done
+        break
+        ;;
+      2)
+        INSTALL_BASE="$(prompt_feature_toggle "Install base packages" "${INSTALL_BASE}")"
+        INSTALL_DOCKER="$(prompt_feature_toggle "Install/configure Docker" "${INSTALL_DOCKER}")"
+        INSTALL_COCKPIT="$(prompt_feature_toggle "Install/configure Cockpit" "${INSTALL_COCKPIT}")"
+        CONFIGURE_BASHRC="$(prompt_feature_toggle "Configure .bashrc" "${CONFIGURE_BASHRC}")"
+        CONFIGURE_FIREWALL="$(prompt_feature_toggle "Configure firewall (UFW)" "${CONFIGURE_FIREWALL}")"
+        CONFIGURE_FAIL2BAN="$(prompt_feature_toggle "Configure fail2ban" "${CONFIGURE_FAIL2BAN}")"
+        HARDEN_SSH="$(prompt_feature_toggle "Apply SSH hardening" "${HARDEN_SSH}")"
+        break
+        ;;
+      3)
+        INSTALL_BASE=false
+        INSTALL_DOCKER=false
+        INSTALL_COCKPIT=false
+        CONFIGURE_BASHRC=false
+        CONFIGURE_FIREWALL=false
+        CONFIGURE_FAIL2BAN=false
+        HARDEN_SSH=false
+        break
+        ;;
+      *)
+        echo "Invalid selection. Please choose 1, 2, or 3."
+        ;;
+    esac
+  done
+}
+
 install_optional_packages() {
   local available=()
   local pkg
@@ -476,6 +576,7 @@ main() {
   parse_args "$@"
   trap 'on_error "${LINENO}" "${BASH_COMMAND}"' ERR
   preflight_checks
+  interactive_selection_menu
 
   if [[ "${INSTALL_BASE}" == "true" ]]; then
     if confirm_step "Install base packages?"; then
